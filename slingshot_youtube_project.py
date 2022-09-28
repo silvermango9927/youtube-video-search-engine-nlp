@@ -7,11 +7,12 @@ Original file is located at
     https://colab.research.google.com/drive/1kuRK3Uc8LS66NLArs0JAmS_79MN_4d8u
 """
 
-!pip install youtube-search
-!pip install youtube_transcript_api
+#!pip install youtube-search
+#!pip install youtube_transcript_api
 
-!pip install nltk
+#!pip install nltk
 
+# The following chunk of code allows you to scour the youtube database and get a video matching your query
 from youtube_search import YoutubeSearch
 query = input('Query here... ')
 results = YoutubeSearch(query, max_results=1).to_dict()
@@ -23,43 +24,44 @@ for result in results:
   with open('ytbase.txt', 'w') as f:
     f.write(id)
     f.write('\n')
-
+    
+# The data of the video gotten will be used in order to obtain the relevant transcripts
 from youtube_transcript_api import YouTubeTranscriptApi
 from collections import Counter
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import cosine_similarity # Cosine similarity techniques are used to easily assess the similarity and relevance of the frames of the video with the query
 import nltk
 nltk.download('punkt')
-nltk.download('stopwords')
+nltk.download('stopwords') # Used to remove unncessary words such as 'the', 'a', 'an' etc. to make processing the transcript bits easier
 
 with open('ytbase.txt', 'r') as f:
   lines = f.readlines()
   for line in lines:
-    transcript = YouTubeTranscriptApi.get_transcript(line)
+    transcript = YouTubeTranscriptApi.get_transcript(line) # getting the transcript
 
 sw = nltk.corpus.stopwords.words('english') 
-query_text = nltk.tokenize.word_tokenize(query)
+query_text = nltk.tokenize.word_tokenize(query) # Splits the query into separate relevant keywords
 query_set = {w for w in query_text if not w in sw}
-query_vals = Counter(query_set)
+query_vals = Counter(query_set) # Forms a counter object which will later be turned into vectors
 # print(query_vals)
 
 for frame in transcript:
   trans_text = nltk.tokenize.word_tokenize(frame['text'])
-  transcript_set = {x for x in trans_text if not x in sw}
+  transcript_set = {x for x in trans_text if not x in sw} # Filtering unncessary stopwords
   trans_time = frame['start']
-  end_time = float(frame['start']) + float(frame['duration'])
+  end_time = float(frame['start']) + float(frame['duration']) # Metadata of each chunk of the transcript data
   # print(transcript_set)
 
   transcript_vals = Counter(transcript_set)
   # print(transcript_vals)
 
-  words  = list(query_vals.keys() | transcript_vals.keys())
+  words  = list(query_vals.keys() | transcript_vals.keys()) 
   query_vect = [query_vals.get(word, 0) for word in words]       
-  transcript_vect = [transcript_vals.get(word, 0) for word in words] 
+  transcript_vect = [transcript_vals.get(word, 0) for word in words] # Creating vectors to efficiently fit the cosine similarity algorithm
   # print(query_vect)
   # print(transcript_vect)
 
   if (cosine_similarity([query_vect], [transcript_vect])) > 0.5:
-    print("You will find your answer in between :", trans_time, 'and', end_time)
+    print("You will find your answer in between :", trans_time, 'and', end_time) # Relevant keywords are matched, and if so, the timestamps of the frame are retrieved
   # else:
   #   print('Answer is probably somewhere else')
 
